@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none';">
+  <title>SiteGo — Publish with confidence</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="SiteGo home"><span class="brand-mark">S</span><span>sitego<span class="brand-dot">.</span></span></a>
+      <div class="side-label">WORKSPACE</div>
+      <div class="workspace"><span class="workspace-avatar">B</span><span><strong>Brian's workspace</strong><small>Local on this device</small></span><span class="chevron">⌄</span></div>
+      <div class="side-label site-label">YOUR SITES <span id="site-count">0</span></div>
+      <nav id="site-list" class="site-list" aria-label="Your sites"></nav>
+      <button class="add-site-link" id="add-site-side" type="button"><span>＋</span> Add a website</button>
+      <div class="sidebar-bottom">
+        <div class="privacy-card"><span class="privacy-icon">◈</span><div><strong>Your files stay yours</strong><p>Site files stay on this computer until you publish.</p></div></div>
+        <button class="nav-row" type="button" data-view="help"><span>?</span> Help & feedback</button>
+        <div class="account"><div class="account-avatar">BE</div><div><strong>Brian Odoch Emmanuel</strong><small>SiteGo owner</small></div><button class="more" aria-label="Account options">···</button></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar"><div class="breadcrumbs"><span>Workspace</span><span class="crumb-sep">/</span><strong id="breadcrumb-site">Overview</strong></div><div class="top-actions"><span class="connection"><i></i> Local app connected</span><button class="icon-button" id="refresh" title="Refresh sites" aria-label="Refresh">↻</button></div></header>
+      <div class="content" id="content"></div>
+    </main>
+  </div>
+
+  <dialog id="add-dialog" class="modal">
+    <form id="add-form" method="dialog">
+      <button class="modal-close" value="cancel" aria-label="Close">×</button>
+      <div class="modal-kicker">CONNECT A SITE</div>
+      <h2>Add a website</h2>
+      <p class="modal-intro">Connect the local folder you already work in. SiteGo saves the link between this folder and its GitHub repository.</p>
+      <label for="site-name">Website name</label><input id="site-name" name="name" required maxlength="100" placeholder="e.g. AfriShield Gold">
+      <label for="site-folder">Local folder</label><div class="folder-row"><input id="site-folder" name="folder" required readonly placeholder="Choose your website folder"><button type="button" id="choose-folder" class="button secondary">Browse</button></div>
+      <label for="site-url">Live website address <span class="optional">optional</span></label><input id="site-url" name="liveUrl" type="url" placeholder="https://example.com">
+      <div class="form-note"><span>i</span><p>SiteGo only accepts HTTPS addresses. You can add the live link later to check the published site.</p></div>
+      <div class="modal-actions"><button class="button secondary" value="cancel">Cancel</button><button id="save-site" class="button primary" value="default">Connect website <span>→</span></button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
