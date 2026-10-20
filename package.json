@@ -7,9 +7,39 @@
   "license": "UNLICENSED",
   "main": "src/main/index.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist:win:dir": "electron-builder --win dir --x64 --publish never"
   },
   "devDependencies": {
-    "electron": "^44.9.0"
+    "electron": "^44.9.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.sitego.desktop",
+    "productName": "SiteGo",
+    "asar": true,
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "src/main/**/*",
+      "src/preload.js",
+      "src/renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SiteGo"
+    },
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   }
 }

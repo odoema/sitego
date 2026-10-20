@@ -6,6 +6,8 @@ const path = require('node:path');
 const { createStore } = require('./store');
 const { inspectRepository, commitAndPush, waitForDeployment, checkLiveUrl } = require('./git');
 
+if (process.platform === 'win32') app.setAppUserModelId('com.sitego.desktop');
+
 let mainWindow;
 let store;
 
