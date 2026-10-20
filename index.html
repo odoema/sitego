@@ -8,12 +8,13 @@
   <title>SiteGo — Your website. Out there.</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="site.css">
+  <script src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js" defer></script>
   <script src="site.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="SiteGo home"><span class="brand-mark" aria-hidden="true">↗</span><span>sitego</span></a>
+    <a class="brand" href="#top" aria-label="SiteGo home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path class="arrow-shadow" d="M13 35 34 14M19 14h15v15"/><path class="arrow-face" d="M13 35 34 14M19 14h15v15"/></svg></span><span>sitego</span></a>
     <button class="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Open menu"><span></span><span></span></button>
     <nav id="main-nav" class="nav" aria-label="Main navigation">
       <a href="#how">How it works</a><a href="#why">Why SiteGo</a><a href="#roadmap">What’s next</a>
@@ -42,6 +43,16 @@
 
     <section class="ticker" aria-label="SiteGo principles"><div class="ticker-track"><span>YOUR FILES</span><b>✳</b><span>YOUR FLOW</span><b>✳</b><span>YOUR WEBSITE</span><b>✳</b><span>READY TO GO</span><b>✳</b><span>YOUR FILES</span><b>✳</b><span>YOUR FLOW</span><b>✳</b><span>YOUR WEBSITE</span><b>✳</b><span>READY TO GO</span><b>✳</b></div></section>
 
+    <section class="install-showcase wrap" aria-labelledby="install-heading">
+      <div class="install-copy"><div class="eyebrow">A FRIENDLY FIRST RUN</div><h2 id="install-heading">Meet SiteGo.<br><em>Then get going.</em></h2><p>A little preview of the setup moment: SiteGo gets ready, then your website is one step closer to the world.</p></div>
+      <div class="install-window" aria-label="Illustration of SiteGo installing">
+        <div class="install-window-top"><span class="install-brand"><span class="install-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 35 34 14M19 14h15v15"/></svg></span>sitego setup</span><span class="install-window-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <div class="install-content"><div class="install-app-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M13 35 34 14M19 14h15v15"/></svg></div><div class="install-copyline"><strong>Installing SiteGo</strong><span>Getting your workspace ready</span></div><span class="install-badge" aria-hidden="true">PREVIEW</span></div>
+        <div class="install-track" role="progressbar" aria-label="Illustrative SiteGo installation progress" aria-valuemin="0" aria-valuemax="100"><span class="install-fill"></span></div>
+        <div class="install-foot"><span>Preparing your tools</span><span>Almost there</span></div>
+      </div>
+    </section>
+
     <section class="section wrap how" id="how">
       <div class="section-head"><div><div class="eyebrow">01 / THE SIMPLE PART</div><h2>From “it’s ready”<br>to <em>it’s live.</em></h2></div><p>Publishing shouldn’t turn into a second project. SiteGo is built around the way you already work: make changes locally, then send them out.</p></div>
       <div class="steps">
@@ -59,6 +70,6 @@
     <section class="closing" id="get-started"><div class="wrap closing-inner"><div class="closing-stamp">S<br>G</div><div><div class="eyebrow eyebrow-light">MADE FOR MAKERS</div><h2>Make it.<br><em>Then make it live.</em></h2><p>SiteGo is being built for people who want a simpler path from local work to a live website.</p><a class="button button-lime" href="#how">Explore the idea <span aria-hidden="true">↗</span></a></div><span class="closing-star">✳</span></div></section>
   </main>
 
-  <footer class="footer wrap"><a class="brand" href="#top"><span class="brand-mark">↗</span><span>sitego</span></a><span>Built for the moment you hit publish.</span><a href="#top" class="back-top">BACK TO TOP ↑</a><small>© <span id="year">2026</span> SiteGo · A project by Brian Odoch Emmanuel</small></footer>
+  <footer class="footer wrap"><a class="brand" href="#top" aria-label="SiteGo home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path class="arrow-shadow" d="M13 35 34 14M19 14h15v15"/><path class="arrow-face" d="M13 35 34 14M19 14h15v15"/></svg></span><span>sitego</span></a><span>Built for the moment you hit publish.</span><a href="#top" class="back-top">BACK TO TOP ↑</a><small>© <span id="year">2026</span> SiteGo · A project by Brian Odoch Emmanuel</small></footer>
 </body>
 </html>
