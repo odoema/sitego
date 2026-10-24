@@ -1,0 +1,192 @@
+'use strict';
+
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const { execFile } = require('node:child_process');
+
+function send(message) { process.stdout.write(JSON.stringify(message) + '\n'); }
+function ok(id, result) { send({ jsonrpc: '2.0', id, result }); }
+function err(id, code, message) { send({ jsonrpc: '2.0', id, error: { code, message } }); }
+
+function runGit(cwd, args, timeout = 30000) {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, { cwd, windowsHide: true, timeout, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8' }, (error, stdout, stderr) => {
+      if (error) return reject(new Error((stderr || error.message || 'Git command failed').trim()));
+      resolve(stdout);
+    });
+  });
+}
+
+function repoFromRemote(remote) {
+  const value = remote.trim();
+  const ssh = value.match(/^(?:git@|ssh:\/\/git@)github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i);
+  const https = value.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i);
+  const m = ssh || https;
+  return m ? `${m[1]}/${m[2]}` : null;
+}
+
+function describeStatus(code) {
+  if (code === '??') return 'New file';
+  if (code.includes('D')) return 'Deleted';
+  if (code.includes('R')) return 'Renamed';
+  if (code.includes('A')) return 'Added';
+  if (code.includes('M')) return 'Modified';
+  return 'Changed';
+}
+
+function parseStatus(output) {
+  const fields = output.split('\0');
+  const files = [];
+  for (let i = 0; i < fields.length; i++) {
+    if (!fields[i]) continue;
+    const code = fields[i].slice(0, 2);
+    const file = fields[i].slice(3);
+    const relatedPaths = [];
+    if (code.includes('R') || code.includes('C')) {
+      if (fields[i + 1]) { relatedPaths.push(fields[i + 1]); i++; }
+    }
+    files.push({ path: file, relatedPaths, code, status: describeStatus(code) });
+  }
+  return files;
+}
+
+function secretFinding(relativePath, source) {
+  const base = path.basename(relativePath).toLowerCase();
+  if (/^(\.env($|\.)|id_rsa$|id_ed25519$|credentials\.json$)/i.test(base)) return 'Sensitive filename';
+  if (/\.(pem|key|p12|pfx)$/i.test(base)) return 'Private key or certificate file';
+  if (source.includes('\0')) return null;
+  const patterns = [
+    /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
+    /\bAKIA[0-9A-Z]{16}\b/,
+    /\b(?:ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]{20,}\b/,
+    /\b(?:sk_live|rk_live)_[A-Za-z0-9]{16,}\b/,
+    /(?:api[_-]?key|client[_-]?secret|password|access[_-]?token)\s*[:=]\s*["'][^"'\r\n]{12,}["']/i
+  ];
+  return patterns.some(p => p.test(source)) ? 'Possible secret in file' : null;
+}
+
+async function inspect(folder) {
+  const top = await runGit(folder, ['rev-parse', '--show-toplevel']);
+  const root = await fs.realpath(top.trim());
+  const [branch, head, remote, status] = await Promise.all([
+    runGit(root, ['branch', '--show-current']),
+    runGit(root, ['rev-parse', 'HEAD']),
+    runGit(root, ['remote', 'get-url', 'origin']),
+    runGit(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'])
+  ]);
+  const files = parseStatus(status);
+  const findings = [];
+  for (const file of files) {
+    if (file.status === 'Deleted') continue;
+    const absolute = path.resolve(root, file.path);
+    const rel = path.relative(root, absolute);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      findings.push({ path: file.path, level: 'block', issue: 'Path leaves the project folder' });
+      continue;
+    }
+    try {
+      const info = await fs.lstat(absolute);
+      if (info.isSymbolicLink() || !info.isFile() || info.size > 2 * 1024 * 1024) continue;
+      const content = await fs.readFile(absolute, 'utf8');
+      const issue = secretFinding(file.path, content);
+      if (issue) findings.push({ path: file.path, level: 'block', issue });
+    } catch {}
+  }
+  return { root, branch: branch.trim(), head: head.trim(), remote: remote.trim(), repository: repoFromRemote(remote), files, findings };
+}
+
+async function liveCheck(siteUrl) {
+  if (!siteUrl) return { ok: false, detail: 'No HTTPS live URL supplied.' };
+  let url;
+  try { url = new URL(siteUrl); } catch { return { ok: false, detail: 'Invalid URL.' }; }
+  if (url.protocol !== 'https:') return { ok: false, detail: 'Only HTTPS URLs are checked.' };
+  try {
+    const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(12000) });
+    return { ok: response.ok, status: response.status, detail: `The URL returned HTTP ${response.status}.` };
+  } catch { return { ok: false, detail: 'The live URL did not respond.' }; }
+}
+
+async function deployment(repository, sha, liveUrl) {
+  const api = `https://api.github.com/repos/${repository}/actions/runs?head_sha=${encodeURIComponent(sha)}&per_page=20`;
+  try {
+    const response = await fetch(api, { headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } });
+    if (!response.ok) return { state: 'unconfirmed', detail: `GitHub Actions status unavailable (${response.status}).` };
+    const payload = await response.json();
+    const run = (payload.workflow_runs || []).find(x => x.head_sha === sha);
+    if (!run) return { state: 'pending', detail: 'No workflow run found yet for this commit.' };
+    if (run.status !== 'completed') return { state: 'running', detail: `Workflow is ${run.status}.`, runUrl: run.html_url };
+    if (run.conclusion !== 'success') return { state: 'failed', detail: `Workflow concluded ${run.conclusion || 'without a conclusion'}.`, runUrl: run.html_url };
+    const live = await liveCheck(liveUrl);
+    return { state: live.ok ? 'verified' : 'deployed', detail: live.ok ? 'Workflow succeeded and the live URL responded.' : `Workflow succeeded. ${live.detail}`, runUrl: run.html_url, live };
+  } catch { return { state: 'unconfirmed', detail: 'Could not reach GitHub Actions.' }; }
+}
+
+async function publish(args) {
+  const current = await inspect(args.folder);
+  if (!current.repository) throw new Error('The repository origin is not a GitHub repository.');
+  if (args.expectedHead && current.head !== args.expectedHead) throw new Error('Repository changed after review. Inspect again before publishing.');
+  const selected = [...new Set((args.paths || []).map(String))];
+  if (!selected.length) throw new Error('Select at least one changed file.');
+  const blocked = current.findings.filter(f => selected.includes(f.path));
+  if (blocked.length) throw new Error(`Blocked by secret scan: ${blocked.map(x => x.path).join(', ')}`);
+  const changed = new Set(current.files.map(f => f.path));
+  if (selected.some(p => !changed.has(p))) throw new Error('Selected files no longer match the reviewed change list. Inspect again.');
+  const staged = (await runGit(current.root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean);
+  if (staged.length) throw new Error('There are already staged changes. Commit or unstage them, then inspect again.');
+  const related = current.files.filter(f => selected.includes(f.path)).flatMap(f => f.relatedPaths || []);
+  const paths = [...new Set([...selected, ...related])];
+  await runGit(current.root, ['add', '--', ...paths]);
+  try {
+    await runGit(current.root, ['commit', '-m', String(args.note || `Publish ${path.basename(current.root)}`).slice(0, 120), '--only', '--', ...paths], 120000);
+  } catch (e) {
+    await runGit(current.root, ['reset', '--', ...paths]).catch(() => {});
+    throw e;
+  }
+  const sha = (await runGit(current.root, ['rev-parse', 'HEAD'])).trim();
+  try {
+    await runGit(current.root, ['push', 'origin', current.branch], 180000);
+  } catch (e) {
+    throw new Error(`Commit ${sha.slice(0, 7)} was created but push failed. ${e.message}`);
+  }
+  return { repository: current.repository, branch: current.branch, sha, deployment: await deployment(current.repository, sha, args.liveUrl) };
+}
+
+const tools = [
+  { name: 'sitego_inspect', description: 'Inspect a local Git repository, changed files, branch, GitHub remote, and secret-scan findings.', inputSchema: { type: 'object', properties: { folder: { type: 'string', description: 'Absolute local path to the repository.' } }, required: ['folder'] } },
+  { name: 'sitego_publish', description: 'Commit and push only explicitly selected reviewed files, then check GitHub Actions and the live URL.', inputSchema: { type: 'object', properties: { folder: { type: 'string' }, paths: { type: 'array', items: { type: 'string' } }, expectedHead: { type: 'string' }, note: { type: 'string' }, liveUrl: { type: 'string' } }, required: ['folder', 'paths'] } },
+  { name: 'sitego_deployment_status', description: 'Check GitHub Actions status for a commit and optionally verify the HTTPS live URL.', inputSchema: { type: 'object', properties: { repository: { type: 'string' }, sha: { type: 'string' }, liveUrl: { type: 'string' } }, required: ['repository', 'sha'] } },
+  { name: 'sitego_check_live_url', description: 'Check whether an HTTPS live URL responds successfully.', inputSchema: { type: 'object', properties: { liveUrl: { type: 'string' } }, required: ['liveUrl'] } }
+];
+
+async function callTool(name, args) {
+  if (name === 'sitego_inspect') return inspect(args.folder);
+  if (name === 'sitego_publish') return publish(args);
+  if (name === 'sitego_deployment_status') return deployment(args.repository, args.sha, args.liveUrl);
+  if (name === 'sitego_check_live_url') return liveCheck(args.liveUrl);
+  throw new Error(`Unknown tool: ${name}`);
+}
+
+let line = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => {
+  line += chunk;
+  let idx;
+  while ((idx = line.indexOf('\n')) >= 0) {
+    const raw = line.slice(0, idx).trim(); line = line.slice(idx + 1);
+    if (!raw) continue;
+    let message;
+    try { message = JSON.parse(raw); } catch { continue; }
+    if (message.method === 'initialize') {
+      ok(message.id, { protocolVersion: message.params?.protocolVersion || '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'sitego', version: '0.1.0' } });
+    } else if (message.method === 'notifications/initialized') {
+    } else if (message.method === 'tools/list') {
+      ok(message.id, { tools });
+    } else if (message.method === 'tools/call') {
+      callTool(message.params?.name, message.params?.arguments || {})
+        .then(result => ok(message.id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }))
+        .catch(e => ok(message.id, { isError: true, content: [{ type: 'text', text: e.message }] }));
+    } else if (message.id !== undefined) {
+      err(message.id, -32601, `Method not found: ${message.method}`);
+    }
+  }
+});
