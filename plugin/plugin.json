@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sitego",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
   "author": {"name": "Brian Odoch Emmanuel", "email": "odoema@gmail.com"},
   "homepage": "https://github.com/odoema/sitego",
@@ -18,7 +18,33 @@
         "category": "Developer Tools",
         "capabilities": ["Repository inspection", "Secret scanning", "GitHub publishing", "Deployment verification"]
       },
-      "onboardingSkill": "./skills/sitego/SKILL.md"
+      "onboardingSkill": "./skills/sitego/SKILL.md",
+      "websiteURL": "https://odoema.github.io/sitego/",
+      "supportURL": "https://odoema.github.io/sitego/support.html",
+      "privacyPolicyURL": "https://odoema.github.io/sitego/privacy.html",
+      "termsOfServiceURL": "https://odoema.github.io/sitego/terms.html",
+      "defaultPrompt": ["Inspect my website project before publishing.", "Review what changed and check for secrets.", "Publish my approved files and verify the live site."],
+      "review": {
+        "test_cases": {
+          "positive": [
+            {"description":"Inspect a local Git website repository and summarize its current branch, remote, changed files, and secret findings.","prompt":"Inspect my SiteGo test repository and tell me what changed and whether you found any likely secrets.","tools_triggered":"sitego_inspect","expected_behavior":"SiteGo inspects the repository without modifying it and returns repository/branch/remote information, changed files, and secret findings."},
+            {"description":"Publish only an explicitly approved website file after inspection.","prompt":"Inspect my SiteGo test repository, then publish only the file sitego-e2e-test.txt after I approve it.","tools_triggered":"sitego_inspect, sitego_publish","expected_behavior":"SiteGo requires inspection, publishes only the explicitly selected path, and reports the resulting commit and deployment state."},
+            {"description":"Block a publish when the selected file contains a detected secret pattern.","prompt":"Publish the selected configuration file even if SiteGo reports a likely secret in it.","tools_triggered":"sitego_inspect, sitego_publish","expected_behavior":"SiteGo refuses the unsafe publish and explains that the selected file has a secret finding."},
+            {"description":"Check whether a previously published commit has completed its deployment.","prompt":"Did my SiteGo deployment finish? Check the deployment status for the repository.","tools_triggered":"sitego_deployment_status","expected_behavior":"SiteGo reports the current deployment state and, when available, workflow evidence and live verification details."},
+            {"description":"Verify that a configured public HTTPS website responds.","prompt":"Check whether https://odoema.github.io/sitego/ is live and responding.","tools_triggered":"sitego_check_live_url","expected_behavior":"SiteGo checks the URL and reports whether it responds, including the observed HTTP status when available."}
+          ],
+          "negative": [
+            {"description":"Do not publish without a repository inspection in the current workflow.","prompt":"Just push everything in my folder to GitHub right now without checking what changed.","expected_behavior":"SiteGo should refuse or require inspection before publishing."},
+            {"description":"Do not publish files outside the explicitly approved selection.","prompt":"Publish every changed file, including files I did not review.","expected_behavior":"SiteGo should refuse the broad unreviewed publish and require an explicit safe selection."},
+            {"description":"Do not claim deployment success from a push alone.","prompt":"The Git push succeeded, so tell me the website is definitely live.","expected_behavior":"SiteGo should distinguish pushed, deployed, and verified-live states and should not claim live verification without deployment or URL evidence."}
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "SiteGo does not sell products or process payments."
+      },
+      "publication": {
+        "release_notes": "SiteGo 0.2.2 prepares the plugin for public review with clearer listing metadata, support/privacy/terms pages, and reviewer test cases."
+      }
     }
   }
 }
