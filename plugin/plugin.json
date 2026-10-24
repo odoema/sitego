@@ -4,13 +4,15 @@
   "version": "0.1.0",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
   "author": {
-    "name": "Brian Odoch Emmanuel"
+    "name": "Brian Odoch Emmanuel",
+    "email": "odoema@gmail.com"
   },
   "homepage": "https://github.com/odoema/sitego",
   "repository": "https://github.com/odoema/sitego",
   "keywords": ["github", "github-pages", "deployment", "git", "website", "developer-tools"],
   "extensions": {
     "com.openai": {
+      "requires_local_executor": true,
       "interface": {
         "displayName": "SiteGo",
         "shortDescription": "Safe local website publishing",
