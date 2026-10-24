@@ -38,65 +38,57 @@ function parseStatus(output) {
   const fields = output.split('\0');
   const files = [];
   for (let i = 0; i < fields.length; i++) {
-    if (!fields[i]) continue;
-    const code = fields[i].slice(0, 2);
-    const file = fields[i].slice(3);
-    const relatedPaths = [];
+    const field = fields[i];
+    if (!field) continue;
+    const code = field.slice(0, 2);
+    let file = field.slice(3);
     if (code.includes('R') || code.includes('C')) {
-      if (fields[i + 1]) { relatedPaths.push(fields[i + 1]); i++; }
+      const next = fields[++i] || '';
+      files.push({ path: next, relatedPaths: [file], code, status: describeStatus(code) });
+    } else {
+      files.push({ path: file, relatedPaths: [], code, status: describeStatus(code) });
     }
-    files.push({ path: file, relatedPaths, code, status: describeStatus(code) });
   }
   return files;
 }
 
-function secretFinding(relativePath, source) {
-  const base = path.basename(relativePath).toLowerCase();
-  if (/^(\.env($|\.)|id_rsa$|id_ed25519$|credentials\.json$)/i.test(base)) return 'Sensitive filename';
-  if (/\.(pem|key|p12|pfx)$/i.test(base)) return 'Private key or certificate file';
-  if (source.includes('\0')) return null;
-  const patterns = [
-    /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
-    /\bAKIA[0-9A-Z]{16}\b/,
-    /\b(?:ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]{20,}\b/,
-    /\b(?:sk_live|rk_live)_[A-Za-z0-9]{16,}\b/,
-    /(?:api[_-]?key|client[_-]?secret|password|access[_-]?token)\s*[:=]\s*["'][^"'\r\n]{12,}["']/i
-  ];
-  return patterns.some(p => p.test(source)) ? 'Possible secret in file' : null;
-}
+const SECRET_PATTERNS = [
+  { name: 'Private key', regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
+  { name: 'GitHub token', regex: /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/ },
+  { name: 'Generic API key', regex: /\b(?:api[_-]?key|secret|token)\s*[:=]\s*['\"][A-Za-z0-9_\-]{20,}['\"]/i },
+  { name: 'AWS access key', regex: /\bAKIA[0-9A-Z]{16}\b/ }
+];
 
-async function inspect(folder) {
-  const top = await runGit(folder, ['rev-parse', '--show-toplevel']);
-  const root = await fs.realpath(top.trim());
-  const [branch, head, remote, status] = await Promise.all([
-    runGit(root, ['branch', '--show-current']),
-    runGit(root, ['rev-parse', 'HEAD']),
-    runGit(root, ['remote', 'get-url', 'origin']),
-    runGit(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'])
-  ]);
-  const files = parseStatus(status);
+async function scanSecrets(root, files) {
   const findings = [];
   for (const file of files) {
     if (file.status === 'Deleted') continue;
-    const absolute = path.resolve(root, file.path);
-    const rel = path.relative(root, absolute);
-    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
-      findings.push({ path: file.path, level: 'block', issue: 'Path leaves the project folder' });
-      continue;
-    }
+    const full = path.join(root, file.path);
     try {
-      const info = await fs.lstat(absolute);
-      if (info.isSymbolicLink() || !info.isFile() || info.size > 2 * 1024 * 1024) continue;
-      const content = await fs.readFile(absolute, 'utf8');
-      const issue = secretFinding(file.path, content);
-      if (issue) findings.push({ path: file.path, level: 'block', issue });
+      const stat = await fs.stat(full);
+      if (!stat.isFile() || stat.size > 2 * 1024 * 1024) continue;
+      const text = await fs.readFile(full, 'utf8');
+      for (const pattern of SECRET_PATTERNS) {
+        if (pattern.regex.test(text)) findings.push({ path: file.path, type: pattern.name });
+      }
     } catch {}
   }
-  return { root, branch: branch.trim(), head: head.trim(), remote: remote.trim(), repository: repoFromRemote(remote), files, findings };
+  return findings;
+}
+
+async function inspect(folder) {
+  const root = path.resolve(folder);
+  const branch = (await runGit(root, ['branch', '--show-current'])).trim();
+  const remoteUrl = (await runGit(root, ['remote', 'get-url', 'origin'])).trim();
+  const repository = repoFromRemote(remoteUrl);
+  const head = (await runGit(root, ['rev-parse', 'HEAD'])).trim();
+  const status = await runGit(root, ['status', '--short', '-z']);
+  const files = parseStatus(status);
+  const findings = await scanSecrets(root, files);
+  return { root, branch, head, remote: remoteUrl, repository, files, findings };
 }
 
 async function liveCheck(siteUrl) {
-  if (!siteUrl) return { ok: false, detail: 'No HTTPS live URL supplied.' };
   let url;
   try { url = new URL(siteUrl); } catch { return { ok: false, detail: 'Invalid URL.' }; }
   if (url.protocol !== 'https:') return { ok: false, detail: 'Only HTTPS URLs are checked.' };
@@ -195,7 +187,7 @@ process.stdin.on('data', chunk => {
     let message;
     try { message = JSON.parse(raw); } catch { continue; }
     if (message.method === 'initialize') {
-      ok(message.id, { protocolVersion: message.params?.protocolVersion || '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'sitego', version: '0.2.1' } });
+      ok(message.id, { protocolVersion: message.params?.protocolVersion || '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'sitego', version: '0.2.2' } });
     } else if (message.method === 'notifications/initialized') {
     } else if (message.method === 'tools/list') {
       ok(message.id, { tools });
