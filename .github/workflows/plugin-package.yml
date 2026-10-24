@@ -39,7 +39,7 @@ jobs:
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
             | timeout 10s node plugin/server/index.js > /tmp/sitego-mcp.jsonl
-          grep -q '"version":"0.2.1"' /tmp/sitego-mcp.jsonl
+          grep -q '"version":"0.2.2"' /tmp/sitego-mcp.jsonl
           grep -q 'sitego_inspect' /tmp/sitego-mcp.jsonl
           grep -q 'sitego_publish' /tmp/sitego-mcp.jsonl
           grep -q 'sitego_deployment_status' /tmp/sitego-mcp.jsonl
