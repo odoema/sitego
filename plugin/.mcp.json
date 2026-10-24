@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sitego": {
+      "command": "node",
+      "args": ["${PLUGIN_ROOT}/server/index.js"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}
