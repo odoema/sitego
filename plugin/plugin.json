@@ -1,12 +1,9 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sitego",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
-  "author": {
-    "name": "Brian Odoch Emmanuel",
-    "email": "odoema@gmail.com"
-  },
+  "author": {"name": "Brian Odoch Emmanuel", "email": "odoema@gmail.com"},
   "homepage": "https://github.com/odoema/sitego",
   "repository": "https://github.com/odoema/sitego",
   "keywords": ["github", "github-pages", "deployment", "git", "website", "developer-tools"],
