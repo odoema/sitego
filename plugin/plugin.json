@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sitego",
+  "version": "0.1.0",
+  "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
+  "author": {
+    "name": "Brian Odoch Emmanuel"
+  },
+  "homepage": "https://github.com/odoema/sitego",
+  "repository": "https://github.com/odoema/sitego",
+  "keywords": ["github", "github-pages", "deployment", "git", "website", "developer-tools"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SiteGo",
+        "shortDescription": "Safe local website publishing",
+        "longDescription": "Use SiteGo to inspect local Git repositories, review changed files and secret findings, publish explicitly selected changes without force-pushing, and verify GitHub Actions and live HTTPS deployment evidence.",
+        "developerName": "Brian Odoch Emmanuel",
+        "category": "Developer Tools",
+        "capabilities": ["Repository inspection", "Secret scanning", "GitHub publishing", "Deployment verification"]
+      },
+      "onboardingSkill": "./skills/sitego/SKILL.md"
+    }
+  }
+}
