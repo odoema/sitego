@@ -6,7 +6,7 @@ Copyright © 2026 Brian Odoch Emmanuel, Uganda. All rights reserved. See [COPYRI
 
 ## What this version is
 
-SiteGo connects the folders you already work in to their GitHub repositories. It shows local changes, flags common secret patterns, and uses your single Publish action as approval to commit only the selected files, push without force, and report GitHub Actions and live-URL evidence separately.
+SiteGo connects the folders you already work in to their GitHub repositories. It shows local changes, flags common secret patterns, and uses your single Publish action as approval to commit only the selected files, push without force, wait for deployment evidence, and verify the live HTTPS result.
 
 SiteGo has now completed a real Windows end-to-end publishing test against the `odoema/sitego` repository. The test used a controlled file change and verified the complete path from local inspection through GitHub Actions to a live HTTPS response.
 
@@ -35,6 +35,14 @@ Evidence from the test:
 - Final SiteGo state: **verified**
 
 This matters because SiteGo does not treat a successful Git push as proof that a website is live. Its deployment verification is a separate step.
+
+## The simpler publishing model
+
+SiteGo 0.2.1 makes the common path simpler: **Publish waits for deployment verification by default.** Instead of returning immediately with a `pending` result and requiring another status check, the publisher can wait for GitHub Actions to appear and finish, then check the live HTTPS URL.
+
+The default maximum wait is 120 seconds, configurable up to 300 seconds. Advanced callers can disable the wait when they need an immediate result.
+
+The goal is simple: **inspect → approve → publish → verify**.
 
 ## Run from source
 
