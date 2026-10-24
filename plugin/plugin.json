@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sitego",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
   "author": {
     "name": "Brian Odoch Emmanuel",
