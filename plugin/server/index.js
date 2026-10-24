@@ -121,6 +121,21 @@ async function deployment(repository, sha, liveUrl) {
   } catch { return { state: 'unconfirmed', detail: 'Could not reach GitHub Actions.' }; }
 }
 
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function waitForDeployment(repository, sha, liveUrl, waitSeconds = 120) {
+  const limit = Math.min(Math.max(Number(waitSeconds) || 120, 0), 300);
+  const deadline = Date.now() + limit * 1000;
+  let last;
+  do {
+    last = await deployment(repository, sha, liveUrl);
+    if (['verified', 'deployed', 'failed', 'unconfirmed'].includes(last.state)) return last;
+    if (Date.now() >= deadline) return last;
+    await sleep(5000);
+  } while (Date.now() < deadline);
+  return last;
+}
+
 async function publish(args) {
   const current = await inspect(args.folder);
   if (!current.repository) throw new Error('The repository origin is not a GitHub repository.');
@@ -148,12 +163,15 @@ async function publish(args) {
   } catch (e) {
     throw new Error(`Commit ${sha.slice(0, 7)} was created but push failed. ${e.message}`);
   }
-  return { repository: current.repository, branch: current.branch, sha, deployment: await deployment(current.repository, sha, args.liveUrl) };
+  const deploymentResult = args.waitForDeployment === false
+    ? await deployment(current.repository, sha, args.liveUrl)
+    : await waitForDeployment(current.repository, sha, args.liveUrl, args.waitSeconds);
+  return { repository: current.repository, branch: current.branch, sha, deployment: deploymentResult };
 }
 
 const tools = [
   { name: 'sitego_inspect', description: 'Inspect a local Git repository, changed files, branch, GitHub remote, and secret-scan findings.', inputSchema: { type: 'object', properties: { folder: { type: 'string', description: 'Absolute local path to the repository.' } }, required: ['folder'] } },
-  { name: 'sitego_publish', description: 'Commit and push only explicitly selected reviewed files, then check GitHub Actions and the live URL.', inputSchema: { type: 'object', properties: { folder: { type: 'string' }, paths: { type: 'array', items: { type: 'string' } }, expectedHead: { type: 'string' }, note: { type: 'string' }, liveUrl: { type: 'string' } }, required: ['folder', 'paths'] } },
+  { name: 'sitego_publish', description: 'Publish only explicitly selected reviewed files. By default, wait for GitHub Actions and verify the live HTTPS URL before reporting the result.', inputSchema: { type: 'object', properties: { folder: { type: 'string' }, paths: { type: 'array', items: { type: 'string' } }, expectedHead: { type: 'string' }, note: { type: 'string' }, liveUrl: { type: 'string' }, waitForDeployment: { type: 'boolean', description: 'Wait for GitHub Actions and live verification. Defaults to true.' }, waitSeconds: { type: 'integer', minimum: 0, maximum: 300, description: 'Maximum seconds to wait for deployment verification. Defaults to 120.' } }, required: ['folder', 'paths'] } },
   { name: 'sitego_deployment_status', description: 'Check GitHub Actions status for a commit and optionally verify the HTTPS live URL.', inputSchema: { type: 'object', properties: { repository: { type: 'string' }, sha: { type: 'string' }, liveUrl: { type: 'string' } }, required: ['repository', 'sha'] } },
   { name: 'sitego_check_live_url', description: 'Check whether an HTTPS live URL responds successfully.', inputSchema: { type: 'object', properties: { liveUrl: { type: 'string' } }, required: ['liveUrl'] } }
 ];
@@ -177,7 +195,7 @@ process.stdin.on('data', chunk => {
     let message;
     try { message = JSON.parse(raw); } catch { continue; }
     if (message.method === 'initialize') {
-      ok(message.id, { protocolVersion: message.params?.protocolVersion || '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'sitego', version: '0.1.0' } });
+      ok(message.id, { protocolVersion: message.params?.protocolVersion || '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'sitego', version: '0.2.1' } });
     } else if (message.method === 'notifications/initialized') {
     } else if (message.method === 'tools/list') {
       ok(message.id, { tools });
