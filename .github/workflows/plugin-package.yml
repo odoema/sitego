@@ -1,0 +1,61 @@
+name: Package SiteGo plugin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugin/**'
+      - '.github/workflows/plugin-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate manifest JSON
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('plugin/plugin.json','utf8')); if(p.name!=='sitego') throw new Error('Invalid plugin name'); if(p.version!=='0.2.1') throw new Error('Unexpected plugin version'); console.log('SiteGo plugin '+p.name+' v'+p.version+' manifest OK');"
+
+      - name: Validate MCP JSON
+        run: node -e "for (const f of ['plugin/mcp.json','plugin/.mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('MCP manifests OK');"
+
+      - name: Validate server syntax
+        run: node --check plugin/server/index.js
+
+      - name: Smoke-test MCP server
+        shell: bash
+        run: |
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            | timeout 10s node plugin/server/index.js > /tmp/sitego-mcp.jsonl
+          grep -q '"version":"0.2.1"' /tmp/sitego-mcp.jsonl
+          grep -q 'sitego_inspect' /tmp/sitego-mcp.jsonl
+          grep -q 'sitego_publish' /tmp/sitego-mcp.jsonl
+          grep -q 'sitego_deployment_status' /tmp/sitego-mcp.jsonl
+          grep -q 'sitego_check_live_url' /tmp/sitego-mcp.jsonl
+          echo 'MCP smoke test passed.'
+
+      - name: Package plugin
+        run: |
+          mkdir -p dist
+          cd plugin
+          zip -r ../dist/sitego-plugin-0.2.1.zip . -x '*.DS_Store'
+
+      - name: Upload plugin package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitego-plugin-0.2.1
+          path: dist/sitego-plugin-0.2.1.zip
+          if-no-files-found: error
+          retention-days: 30
