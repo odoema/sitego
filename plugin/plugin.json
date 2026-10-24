@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sitego",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
   "author": {"name": "Brian Odoch Emmanuel", "email": "odoema@gmail.com"},
   "homepage": "https://github.com/odoema/sitego",
@@ -13,7 +13,7 @@
       "interface": {
         "displayName": "SiteGo",
         "shortDescription": "Safe local website publishing",
-        "longDescription": "Use SiteGo to inspect local Git repositories, review changed files and secret findings, publish explicitly selected changes without force-pushing, and verify GitHub Actions and live HTTPS deployment evidence.",
+        "longDescription": "Use SiteGo to inspect local repositories, review changed files and secret findings, publish only explicitly approved changes, wait for deployment evidence, and verify the live HTTPS result.",
         "developerName": "Brian Odoch Emmanuel",
         "category": "Developer Tools",
         "capabilities": ["Repository inspection", "Secret scanning", "GitHub publishing", "Deployment verification"]
