@@ -1,0 +1,14 @@
+{
+  "name": "sitego",
+  "version": "0.1.0",
+  "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "SiteGo",
+    "shortDescription": "Safe local website publishing",
+    "longDescription": "Use SiteGo to inspect local Git repositories, review changed files and secret findings, publish explicitly selected changes without force-pushing, and verify GitHub Actions and live HTTPS deployment evidence.",
+    "developerName": "Brian Odoch Emmanuel",
+    "category": "Developer Tools"
+  }
+}
