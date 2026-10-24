@@ -1,6 +1,6 @@
 {
   "name": "sitego",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Safely inspect, review, publish, and verify local websites and web apps with Git and GitHub Actions.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
